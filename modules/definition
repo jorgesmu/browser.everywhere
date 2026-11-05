@@ -1,0 +1,3 @@
+# Services to install, one module per line (<name>.sh in this folder), in start order.
+ttyd
+code

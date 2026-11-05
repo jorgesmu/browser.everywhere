@@ -2,18 +2,16 @@
 # Removes everything install.sh added. Leaves ttyd and VS Code installed.
 set -euo pipefail
 
-SUPPORT="$HOME/Library/Application Support/app-web"
-AGENTS="$HOME/Library/LaunchAgents"
-ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
-UID_NUM="$(id -u)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$ROOT/config.sh"
 
-for label in local.ttyd local.code; do
+for label in "${LABELS[@]}"; do
   launchctl bootout "gui/$UID_NUM/$label" 2>/dev/null || true
   rm -f "$AGENTS/$label.plist"
 done
 
 if [ -f "$ZSHRC" ]; then
-  sed -i '' '/^# >>> app-web >>>$/,/^# <<< app-web <<<$/d' "$ZSHRC"
+  sed -i '' "/^$ZSHRC_BEGIN\$/,/^$ZSHRC_END\$/d" "$ZSHRC"
 fi
 
 rm -rf "$SUPPORT"

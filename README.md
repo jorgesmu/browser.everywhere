@@ -14,6 +14,8 @@ Bookmark them as **terminal** and **vscode**, then type that word in Chrome's ad
 ./install.sh      # safe to re-run; no sudo
 ./uninstall.sh    # removes services, the t/cw shortcuts and the secrets folder
 ```
+Both scripts read `config.sh` (shared paths and markers), which loads the modules listed in `modules/definition`. Each module in `modules/` (`ttyd.sh`, `code.sh`) registers its label and port and says how to set its service up; see [modules/README.md](modules/README.md) to add one.
+
 `install.sh` installs ttyd with Homebrew if needed, and prints the terminal login (Chrome asks for it the first time; let it save it) and the VS Code address with its token.
 
 ## What it sets up
