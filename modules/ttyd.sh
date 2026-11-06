@@ -40,3 +40,11 @@ SH
     -t disableLeaveAlert=true \
     ./shell
 }
+
+# install's final message.
+ttyd_info() {
+  echo "  Terminal: http://localhost:$TTYD_PORT (bookmark it as \"terminal\")"
+  echo "    Login (your browser asks once, let it save it):"
+  echo "      user:     $TTYD_USER"
+  echo "      password: $TTYD_PASS"
+}

@@ -21,3 +21,9 @@ code_setup() {
     --connection-token-file "$SUPPORT/code-token" \
     --accept-server-license-terms
 }
+
+# install's final message.
+code_info() {
+  echo "  VS Code: http://localhost:$CODE_PORT/?tkn=$(cat "$SUPPORT/code-token") (bookmark it as \"vscode\")"
+  echo "    Keep the ?tkn= part: VS Code's sign-in cookie only lasts 7 days."
+}

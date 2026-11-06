@@ -1,6 +1,6 @@
 #!/bin/bash
-# Installs your terminal (ttyd) and VS Code (code serve-web) as login services
-# on localhost, so they open as browser tabs. Safe to re-run; no sudo needed.
+# Installs the modules listed in modules/definition as login services on
+# localhost, so they open as browser tabs. Safe to re-run; no sudo needed.
 set -euo pipefail
 
 # Piped from curl (no checkout next to us): fetch the repo and run from there.
@@ -80,7 +80,7 @@ $args  </array>
 </dict>
 </plist>
 EOF
-  chmod 600 "$AGENTS/$label.plist" # holds the ttyd password
+  chmod 600 "$AGENTS/$label.plist" # may hold a password
 }
 
 mkdir -p "$AGENTS"
@@ -98,7 +98,7 @@ wait_port() {
   done
   fail "$name didn't start on port $port. See $SUPPORT/logs/"
 }
-say "Starting services (VS Code may take a minute the first time)…"
+say "Starting services (the first start can take a minute)…"
 for i in "${!MODULES[@]}"; do wait_port "${PORTS[$i]}" "${TITLES[$i]}"; done
 
 # ── 4. shortcuts in ~/.local/bin ────────────────────────────────────────────
@@ -132,19 +132,20 @@ for i in "${!SHORTCUTS[@]}"; do write_shortcut "${SHORTCUTS[$i]}" "${SHORTCUT_UR
 
 # ── 5. first visit + instructions ───────────────────────────────────────────
 echo
-say "Installed. Terminal: http://localhost:$TTYD_PORT   VS Code: http://localhost:$CODE_PORT"
+say "Installed."
+for i in "${!MODULES[@]}"; do
+  echo
+  m="${MODULES[$i]}"
+  if declare -F "${m}_info" >/dev/null; then "${m}_info"
+  else echo "  ${TITLES[$i]}: http://localhost:${PORTS[$i]}"
+  fi
+done
 echo
-echo "  Terminal login (your browser asks once, let it save it):"
-echo "    user:     $TTYD_USER"
-echo "    password: $TTYD_PASS"
+echo "  Bookmark each tab with a short name, then type that name in the address bar"
+echo "  and pick the bookmark."
 echo
-echo "  Make the shortcuts: in your browser, bookmark each tab and name it"
-echo "    \"terminal\" → http://localhost:$TTYD_PORT"
-echo "    \"vscode\"   → http://localhost:$CODE_PORT/?tkn=$(cat "$SUPPORT/code-token")"
-echo "      (keep the ?tkn= part: VS Code's sign-in cookie only lasts 7 days)"
-echo "  Then type terminal or vscode in the address bar and pick the bookmark."
-echo
-echo "  From a terminal:"
+[ ${#SHORTCUTS[@]} -gt 0 ] || exit 0
+echo "  From your shell:"
 for i in "${!SHORTCUTS[@]}"; do
   printf '    %-13s %s\n' "${SHORTCUTS[$i]} [folder]" "${SHORTCUT_HELP[$i]}"
 done
@@ -152,10 +153,10 @@ echo
 case ":$PATH:" in
   *":$BIN:"*)
     echo "  ~/.local/bin is already on your PATH, so the shortcuts are ready."
-    echo "  (Terminals that were already open: open a new one first.)"
+    echo "  (Shells that were already open: open a new one first.)"
     ;;
   *)
-    echo "  ~/.local/bin isn't on your PATH yet. Add it for your shell ($(basename "${SHELL:-sh}")), then open a new terminal:"
+    echo "  ~/.local/bin isn't on your PATH yet. Add it for your shell ($(basename "${SHELL:-sh}")), then open a new shell:"
     echo "    zsh:   echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
     echo "    bash:  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bash_profile"
     echo "    fish:  fish_add_path ~/.local/bin"

@@ -2,6 +2,22 @@
 
 Each service that browser-everywhere runs as a login service (a launch agent) is a module: one file, `modules/<name>.sh`. `config.sh` loads the modules listed in `modules/definition`, in that order. Both `install.sh` and `uninstall.sh` load them.
 
+## Turning a module off
+
+Delete its line from `modules/definition`, or comment it out with `#` (put the name back to turn it on again). This needs a clone: the `curl | bash` install always uses the repo's own `modules/definition`.
+
+Install and uninstall only manage the modules listed there. So if the module is already installed, remove its service **before** taking it out of the list, or uninstall won't know about it and it keeps running at every login. Either:
+
+- **Reinstall everything:** run `./uninstall.sh`, edit `modules/definition`, then run `./install.sh`. The modules you keep get new passwords and tokens, so update your bookmarks.
+- **Remove just that one by hand**, with the `LABEL` and shortcut `COMMAND` from its file (`local.code` and `cw` for `code.sh`), after editing `modules/definition`:
+  ```bash
+  launchctl bootout gui/$(id -u)/LABEL
+  rm ~/Library/LaunchAgents/LABEL.plist ~/.local/bin/COMMAND
+  ```
+  Its secrets in `~/Library/Application Support/browser-everywhere/` (`code-token` for `code`) stay until you delete them or run `./uninstall.sh`.
+
+`modules/definition` must list at least one module.
+
 ## Adding a module
 
 1. Create `modules/<name>.sh` (outline below).
@@ -9,7 +25,7 @@ Each service that browser-everywhere runs as a login service (a launch agent) is
 
 ## The interface
 
-Every module file has three parts, plus an optional shortcut.
+Every module file has three parts, plus an optional shortcut and an optional `_info`.
 
 ### Registration (runs when the file is loaded)
 
@@ -24,7 +40,7 @@ module NAME LABEL PORT TITLE
 | `PORT`  | The localhost port the service listens on. Install checks that it's free before starting, then waits until something is listening on it. | `8000` |
 | `TITLE` | The name shown in messages, such as "VS Code didn't start on port 8000". | `"VS Code"` |
 
-Name module-specific variables with an uppercase `NAME_` prefix (`CODE_LABEL`, `CODE_PORT`). Every module's variables share one namespace, and install's final message reads some of them directly.
+Name module-specific variables with an uppercase `NAME_` prefix (`CODE_LABEL`, `CODE_PORT`). Every module's variables share one namespace.
 
 ### Shortcut (optional, also at load time)
 
@@ -62,7 +78,7 @@ Adds a terminal command, `~/.local/bin/COMMAND [folder]`, that opens `URL` follo
   1. Create any secrets or helper files the service needs in `$SUPPORT`. Keep existing secrets on re-runs (`[ -s file ] || create`), and create them with `umask 077`.
   2. Call `write_agent` exactly once, with the module's `LABEL`.
 - **Does not need to:** start the service. Install starts every agent (`launchctl bootstrap`) and then waits for each `PORT`.
-- **May set globals** that install's final message uses (as `ttyd_setup` does with `TTYD_USER` and `TTYD_PASS`).
+- **May set globals** for its `_info` to print (as `ttyd_setup` does with `TTYD_USER` and `TTYD_PASS`).
 
 ```bash
 write_agent LABEL LOGNAME PROGRAM [ARG...]
@@ -73,6 +89,16 @@ write_agent LABEL LOGNAME PROGRAM [ARG...]
 - runs `PROGRAM ARG...` with `$SUPPORT` as its working directory, so `./file` means `$SUPPORT/file`;
 - logs to `$SUPPORT/logs/<LOGNAME>.log`;
 - gets `PATH` (Homebrew first), `SHELL` and `LANG` as its environment.
+
+### `<name>_info`: its part of install's final message (optional)
+
+```bash
+<name>_info()
+```
+
+- **Called by:** `install.sh` only, at the end, once every service is listening. Modules print in `modules/definition` order.
+- **Job:** `echo` what the user needs to open the service: its address, and any login or token, indented two spaces. `code_info` prints the address with its token; `ttyd_info` prints the login.
+- **If it's missing:** install prints `  TITLE: http://localhost:PORT`.
 
 ## What a module can use
 
@@ -114,5 +140,10 @@ foo_setup() {
   write_agent "$FOO_LABEL" foo "$FOO" \
     --host 127.0.0.1 --port "$FOO_PORT" \
     --token-file "$SUPPORT/foo-token"
+}
+
+# Optional: install's final message.
+foo_info() {
+  echo "  Foo: http://localhost:$FOO_PORT/?token=$(cat "$SUPPORT/foo-token")"
 }
 ```

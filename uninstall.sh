@@ -1,5 +1,5 @@
 #!/bin/bash
-# Removes everything install.sh added. Leaves ttyd and VS Code installed.
+# Removes everything install.sh added. Leaves the programs the modules run installed.
 set -euo pipefail
 
 # Piped from curl (no checkout next to us): fetch the repo and run from there.
