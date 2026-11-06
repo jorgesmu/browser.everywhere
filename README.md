@@ -9,6 +9,8 @@ Runs your terminal ([ttyd](https://github.com/tsl0922/ttyd)) and VS Code (`code 
 
 Bookmark them as **terminal** and **vscode**, then type that word in the address bar and pick the bookmark.
 
+![Demo: opening a terminal and VS Code in the browser](demo.gif)
+
 ## Requirements
 - **macOS only.** It uses launchd for the services, `~/Library` for its files and `open` to launch your default browser, so it doesn't run on Linux or Windows.
 - **[Homebrew](https://brew.sh)**, to install ttyd and Caddy. ttyd doesn't publish macOS builds, so Homebrew is the way to get it.
