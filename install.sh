@@ -9,6 +9,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # ── 1. tools ────────────────────────────────────────────────────────────────
 for m in "${MODULES[@]}"; do "${m}_find"; done
 
+# Never overwrite a shortcut that someone else put in $BIN.
+for i in "${!SHORTCUTS[@]}"; do
+  s="${SHORTCUTS[$i]}"
+  if [ -e "$BIN/$s" ] && ! grep -qF "$SHORTCUT_MARK" "$BIN/$s" 2>/dev/null; then
+    fail "$BIN/$s already exists and wasn't installed by browser-everywhere. Move it away and run this again."
+  fi
+done
+
 # Stop our own services first (re-runs), then every port must be free.
 for label in "${LABELS[@]}"; do
   launchctl bootout "gui/$UID_NUM/$label" 2>/dev/null || true
@@ -80,18 +88,21 @@ wait_port() {
 say "Starting services (VS Code may take a minute the first time)…"
 for i in "${!MODULES[@]}"; do wait_port "${PORTS[$i]}" "${TITLES[$i]}"; done
 
-# ── 4. t / cw shortcuts in .zshrc ───────────────────────────────────────────
-touch "$ZSHRC"
-sed -i '' "/^$ZSHRC_BEGIN\$/,/^$ZSHRC_END\$/d" "$ZSHRC"
-cat >> "$ZSHRC" <<EOF
-$ZSHRC_BEGIN
-# terminal and VS Code in Chrome (installed by app-web; remove with uninstall.sh)
-_appweb_dir() { local d="\${1:-\$PWD}"; (cd "\$d" 2>/dev/null && pwd) || { print -u2 "no such folder: \$d"; return 1; } }
-_appweb_enc() { python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "\$1"; }
-t()  { local d; d="\$(_appweb_dir "\$1")" || return; open -a "Google Chrome" "http://localhost:$TTYD_PORT/?arg=\$(_appweb_enc "\$d")"; }
-cw() { local d; d="\$(_appweb_dir "\$1")" || return; open -a "Google Chrome" "http://localhost:$CODE_PORT/?tkn=\$(cat "$SUPPORT/code-token")&folder=\$(_appweb_enc "\$d")"; }
-$ZSHRC_END
+# ── 4. shortcuts in ~/.local/bin ────────────────────────────────────────────
+# write_shortcut NAME URL: opens URL plus the URL-encoded folder (default: here).
+# URL is pasted inside double quotes, so it can hold $(...) to run at call time.
+write_shortcut() {
+  cat > "$BIN/$1" <<EOF
+#!/bin/sh
+$SHORTCUT_MARK
+dir="\$(cd "\${1:-.}" 2>/dev/null && pwd)" || { echo "no such folder: \${1:-.}" >&2; exit 1; }
+open -a "Google Chrome" "$2\$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "\$dir")"
 EOF
+  chmod 700 "$BIN/$1"
+}
+
+mkdir -p "$BIN"
+for i in "${!SHORTCUTS[@]}"; do write_shortcut "${SHORTCUTS[$i]}" "${SHORTCUT_URLS[$i]}"; done
 
 # ── 5. first visit + instructions ───────────────────────────────────────────
 echo
@@ -107,7 +118,21 @@ echo "    \"vscode\"   → http://localhost:$CODE_PORT/?tkn=$(cat "$SUPPORT/code
 echo "      (keep the ?tkn= part: VS Code's sign-in cookie only lasts 7 days)"
 echo "  Then type terminal or vscode in the address bar and pick the bookmark."
 echo
-echo "  In any terminal (after: source $ZSHRC):"
-echo "    t [folder]    shell tab in that folder"
-echo "    cw [folder]   VS Code tab on that folder"
+echo "  From a terminal:"
+for i in "${!SHORTCUTS[@]}"; do
+  printf '    %-13s %s\n' "${SHORTCUTS[$i]} [folder]" "${SHORTCUT_HELP[$i]}"
+done
+echo
+case ":$PATH:" in
+  *":$BIN:"*)
+    echo "  ~/.local/bin is already on your PATH, so the shortcuts are ready."
+    echo "  (Terminals that were already open: open a new one first.)"
+    ;;
+  *)
+    echo "  ~/.local/bin isn't on your PATH yet. Add it for your shell ($(basename "${SHELL:-sh}")), then open a new terminal:"
+    echo "    zsh:   echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
+    echo "    bash:  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bash_profile"
+    echo "    fish:  fish_add_path ~/.local/bin"
+    ;;
+esac
 echo

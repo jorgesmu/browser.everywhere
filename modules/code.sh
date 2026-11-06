@@ -1,8 +1,9 @@
 # VS Code: code serve-web, gated by a secret token. Sourced by config.sh.
 
 CODE_LABEL=local.code
-CODE_PORT="${APPWEB_CODE_PORT:-8000}"
+CODE_PORT="${BROWSER_EVERYWHERE_CODE_PORT:-8000}"
 module code "$CODE_LABEL" "$CODE_PORT" "VS Code"
+shortcut cw "http://localhost:$CODE_PORT/?tkn=\$(cat '$SUPPORT/code-token')&folder=" "VS Code tab on that folder"
 
 # Sets CODE to the VS Code CLI.
 code_find() {

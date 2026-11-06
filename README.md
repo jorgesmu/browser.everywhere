@@ -1,4 +1,4 @@
-# app-web: terminal and VS Code in Chrome
+# browser-everywhere: terminal and VS Code in Chrome
 
 Runs your terminal ([ttyd](https://github.com/tsl0922/ttyd)) and VS Code (`code serve-web`) as login services on `localhost`, so both open as Chrome tabs.
 
@@ -20,12 +20,12 @@ Both scripts read `config.sh` (shared paths and markers), which loads the module
 
 ## What it sets up
 - `~/Library/LaunchAgents/local.ttyd.plist` and `local.code.plist`: started at login, restarted if they crash.
-- `~/Library/Application Support/app-web/` (only you can open it):
+- `~/Library/Application Support/browser-everywhere/` (only you can open it):
   - `ttyd-pass`: the terminal password.
   - `code-token`: the VS Code token.
   - `shell`: starts `$SHELL -l` in the folder from `?arg=`.
   - `logs/`: output from both services.
-- A `t`/`cw` block in `~/.zshrc`, between `# >>> app-web >>>` markers.
+- `~/.local/bin/t` and `~/.local/bin/cw`: plain `sh` scripts, so they work from any shell. If `~/.local/bin` isn't on your `PATH`, `install.sh` prints the line to add for zsh, bash and fish. It never edits your shell config.
 
 ## Security
 - Both services listen on `127.0.0.1` only, so other computers can't connect.

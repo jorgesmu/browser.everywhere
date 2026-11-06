@@ -10,12 +10,13 @@ for label in "${LABELS[@]}"; do
   rm -f "$AGENTS/$label.plist"
 done
 
-if [ -f "$ZSHRC" ]; then
-  sed -i '' "/^$ZSHRC_BEGIN\$/,/^$ZSHRC_END\$/d" "$ZSHRC"
-fi
+for i in "${!SHORTCUTS[@]}"; do
+  s="$BIN/${SHORTCUTS[$i]}"
+  if grep -qF "$SHORTCUT_MARK" "$s" 2>/dev/null; then rm -f "$s"; fi
+done
 
 rm -rf "$SUPPORT"
 
-echo "✻ Removed the services, the t/cw shortcuts and $SUPPORT."
-echo "  Open terminals keep t/cw until you run: source $ZSHRC"
+echo "✻ Removed the services, the shortcuts and $SUPPORT."
+echo "  If you added ~/.local/bin to your PATH only for these shortcuts, you can remove that line."
 echo "  You can delete the \"terminal\" and \"vscode\" bookmarks in Chrome."

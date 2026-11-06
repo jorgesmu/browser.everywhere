@@ -1,6 +1,6 @@
 # Modules
 
-Each service that app-web runs as a login service (a launch agent) is a module: one file, `modules/<name>.sh`. `config.sh` loads the modules listed in `modules/definition`, in that order. Both `install.sh` and `uninstall.sh` load them.
+Each service that browser-everywhere runs as a login service (a launch agent) is a module: one file, `modules/<name>.sh`. `config.sh` loads the modules listed in `modules/definition`, in that order. Both `install.sh` and `uninstall.sh` load them.
 
 ## Adding a module
 
@@ -9,7 +9,7 @@ Each service that app-web runs as a login service (a launch agent) is a module: 
 
 ## The interface
 
-Every module file has three parts.
+Every module file has three parts, plus an optional shortcut.
 
 ### Registration (runs when the file is loaded)
 
@@ -24,7 +24,21 @@ module NAME LABEL PORT TITLE
 | `PORT`  | The localhost port the service listens on. Install checks that it's free before starting, then waits until something is listening on it. | `8000` |
 | `TITLE` | The name shown in messages, such as "VS Code didn't start on port 8000". | `"VS Code"` |
 
-Name module-specific variables with an uppercase `NAME_` prefix (`CODE_LABEL`, `CODE_PORT`). Every module's variables share one namespace, and install's `.zshrc` block reads some of them directly.
+Name module-specific variables with an uppercase `NAME_` prefix (`CODE_LABEL`, `CODE_PORT`). Every module's variables share one namespace, and install's final message reads some of them directly.
+
+### Shortcut (optional, also at load time)
+
+```bash
+shortcut COMMAND URL HELP
+```
+
+Adds a terminal command, `~/.local/bin/COMMAND [folder]`, that opens `URL` followed by the folder's URL-encoded absolute path (the current folder by default) in Chrome.
+
+| Argument | Meaning | Example |
+|---|---|---|
+| `COMMAND` | The command's name. Install refuses to overwrite a file of that name it didn't create. | `cw` |
+| `URL`     | Everything before the folder. It's written inside double quotes in an `sh` script, so `\$(...)` runs each time the command does (`code.sh` reads its token this way). | `"http://localhost:$CODE_PORT/?tkn=\$(cat '$SUPPORT/code-token')&folder="` |
+| `HELP`    | One line for install's final message. | `"VS Code tab on that folder"` |
 
 ### `<name>_find`: check that the program is there
 
@@ -64,7 +78,7 @@ write_agent LABEL LOGNAME PROGRAM [ARG...]
 
 | Name | What it is |
 |---|---|
-| `$SUPPORT` | `~/Library/Application Support/app-web`, readable only by you. Holds secrets, helper files and `logs/`. |
+| `$SUPPORT` | `~/Library/Application Support/browser-everywhere`, readable only by you. Holds secrets, helper files and `logs/`. |
 | `$AGENTS`  | `~/Library/LaunchAgents` |
 | `$ROOT`    | The repo folder |
 | `say MSG`  | Prints a progress line |
@@ -76,7 +90,7 @@ write_agent LABEL LOGNAME PROGRAM [ARG...]
 - **Loading a module must have no side effects.** `uninstall.sh` loads every module too, possibly after the program has been removed. At the top level, only set variables, define functions and call `module`. Put anything that runs commands or touches files inside `_find` or `_setup`.
 - **Write for macOS's `/bin/bash` 3.2**, with `set -euo pipefail` on. That means no `declare -A`, no `${var^^}`, no `mapfile`, and no unset variables.
 - **Listen on `127.0.0.1` only, and require a secret** (a password or token).
-- **Uninstalling needs nothing from the module.** `uninstall.sh` stops each `LABEL`, deletes its plist and deletes all of `$SUPPORT`.
+- **Uninstalling needs nothing from the module.** `uninstall.sh` stops each `LABEL`, deletes its plist and its shortcut, and deletes all of `$SUPPORT`.
 
 ## Outline
 
@@ -84,7 +98,7 @@ write_agent LABEL LOGNAME PROGRAM [ARG...]
 # Foo: what it serves, and how it's protected. Sourced by config.sh.
 
 FOO_LABEL=local.foo
-FOO_PORT="${APPWEB_FOO_PORT:-9000}"
+FOO_PORT="${BROWSER_EVERYWHERE_FOO_PORT:-9000}"
 module foo "$FOO_LABEL" "$FOO_PORT" "Foo"
 
 # Sets FOO to the foo binary.

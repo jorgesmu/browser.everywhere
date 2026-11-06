@@ -1,8 +1,9 @@
 # Terminal: ttyd, a new login shell per tab. Sourced by config.sh.
 
 TTYD_LABEL=local.ttyd
-TTYD_PORT="${APPWEB_TTYD_PORT:-7682}"
+TTYD_PORT="${BROWSER_EVERYWHERE_TTYD_PORT:-7682}"
 module ttyd "$TTYD_LABEL" "$TTYD_PORT" ttyd
+shortcut t "http://localhost:$TTYD_PORT/?arg=" "shell tab in that folder"
 TTYD_THEME='{"background":"#1f1e1b","foreground":"#e8e6e1","cursor":"#d97757","cursorAccent":"#1f1e1b","selectionBackground":"#d9775755","black":"#2e2d29","red":"#e06c75","green":"#7bc67e","yellow":"#e5c07b","blue":"#61afef","magenta":"#c678dd","cyan":"#56b6c2","white":"#d7d5cf","brightBlack":"#6e6b63","brightRed":"#ef8a92","brightGreen":"#98d69a","brightYellow":"#f0d199","brightBlue":"#85c1f5","brightMagenta":"#d59ae6","brightCyan":"#7ccad4","brightWhite":"#ffffff"}'
 
 # Sets TTYD, installing ttyd with Homebrew if needed.
