@@ -8,15 +8,15 @@ Delete its line from `modules/definition`, or comment it out with `#` (put the n
 
 Install and uninstall only manage the modules listed there. So if the module is already installed, remove its service **before** taking it out of the list, or uninstall won't know about it and it keeps running at every login. Either:
 
-- **Reinstall everything:** run `./uninstall.sh`, edit `modules/definition`, then run `./install.sh`. The modules you keep get new passwords and tokens, so update your bookmarks.
+- **Reinstall everything:** run `./uninstall.sh`, edit `modules/definition`, then run `./install.sh`.
 - **Remove just that one by hand**, with the `LABEL` and shortcut `COMMAND` from its file (`local.code` and `cw` for `code.sh`), after editing `modules/definition`:
   ```bash
   launchctl bootout gui/$(id -u)/LABEL
   rm ~/Library/LaunchAgents/LABEL.plist ~/.local/bin/COMMAND
   ```
-  Its secrets in `~/Library/Application Support/browser-everywhere/` (`code-token` for `code`) stay until you delete them or run `./uninstall.sh`.
+  Then run `./install.sh` again, so Caddy stops serving its port.
 
-`modules/definition` must list at least one module.
+`modules/definition` must list `caddy` and at least one service.
 
 ## Adding a module
 
@@ -25,22 +25,36 @@ Install and uninstall only manage the modules listed there. So if the module is 
 
 ## The interface
 
-Every module file has three parts, plus an optional shortcut and an optional `_info`.
+Every module file has three parts, plus an optional `proxy`, shortcut and `_info`. A service module (`ttyd`, `code`) has a `proxy`; `caddy` is the one module without it.
 
 ### Registration (runs when the file is loaded)
 
 ```bash
-module NAME LABEL PORT TITLE
+module NAME LABEL TITLE
 ```
 
 | Argument | Meaning | Example |
 |---|---|---|
 | `NAME`  | Must match the file name. It's the prefix for the two functions. | `code` |
 | `LABEL` | The launchd label. It's also the plist name: `~/Library/LaunchAgents/<LABEL>.plist`. | `local.code` |
-| `PORT`  | The localhost port the service listens on. Install checks that it's free before starting, then waits until something is listening on it. | `8000` |
-| `TITLE` | The name shown in messages, such as "VS Code didn't start on port 8000". | `"VS Code"` |
+| `TITLE` | The name shown in messages, such as "VS Code didn't start (no code.sock)". | `"VS Code"` |
 
 Name module-specific variables with an uppercase `NAME_` prefix (`CODE_LABEL`, `CODE_PORT`). Every module's variables share one namespace.
+
+### Proxy (service modules, also at load time)
+
+```bash
+proxy PORT SOCKET
+```
+
+Asks Caddy to serve `http://localhost:PORT` from the service's socket. Call it right after `module`.
+
+| Argument | Meaning | Example |
+|---|---|---|
+| `PORT`   | The localhost port Caddy listens on. Install checks that it's free before starting. | `8000` |
+| `SOCKET` | The socket file the service listens on, relative to `$SUPPORT` (macOS limits socket paths to about 100 characters, so they stay short). Install deletes it before starting, then waits until the service creates it and Caddy listens on `PORT`. | `code.sock` |
+
+Caddy only forwards requests for `localhost` or `127.0.0.1` that come from the same page, so the service needs no password or token of its own.
 
 ### Shortcut (optional, also at load time)
 
@@ -53,7 +67,7 @@ Adds a terminal command, `~/.local/bin/COMMAND [folder]`, that opens `URL` follo
 | Argument | Meaning | Example |
 |---|---|---|
 | `COMMAND` | The command's name. Install refuses to overwrite a file of that name it didn't create. | `cw` |
-| `URL`     | Everything before the folder. It's written inside double quotes in an `sh` script, so `\$(...)` runs each time the command does (`code.sh` reads its token this way). | `"http://localhost:$CODE_PORT/?tkn=\$(cat '$SUPPORT/code-token')&folder="` |
+| `URL`     | Everything before the folder. It's written inside double quotes in an `sh` script, so `\$(...)` runs each time the command does. | `"http://localhost:$CODE_PORT/?folder="` |
 | `HELP`    | One line for install's final message. | `"VS Code tab on that folder"` |
 
 ### `<name>_find`: check that the program is there
@@ -73,12 +87,11 @@ Adds a terminal command, `~/.local/bin/COMMAND [folder]`, that opens `URL` follo
 <name>_setup()
 ```
 
-- **Called by:** `install.sh` only, once every `_find` has passed, the old services are stopped, every module's port is free and `$SUPPORT` exists.
+- **Called by:** `install.sh` only, once every `_find` has passed, the old services are stopped, every `proxy` port is free and `$SUPPORT` exists. `caddy_setup` can read every module's `proxy` entries, whatever the order.
 - **Job:**
-  1. Create any secrets or helper files the service needs in `$SUPPORT`. Keep existing secrets on re-runs (`[ -s file ] || create`), and create them with `umask 077`.
-  2. Call `write_agent` exactly once, with the module's `LABEL`.
-- **Does not need to:** start the service. Install starts every agent (`launchctl bootstrap`) and then waits for each `PORT`.
-- **May set globals** for its `_info` to print (as `ttyd_setup` does with `TTYD_USER` and `TTYD_PASS`).
+  1. Create any helper files the service needs in `$SUPPORT`.
+  2. Call `write_agent` exactly once, with the module's `LABEL`. Make the service listen on its `SOCKET` only. If it won't start when a crash left the socket behind, remove it first, as `code.sh` does.
+- **Does not need to:** start the service. Install starts every agent (`launchctl bootstrap`) and then waits for each socket and port.
 
 ```bash
 write_agent LABEL LOGNAME PROGRAM [ARG...]
@@ -97,14 +110,14 @@ write_agent LABEL LOGNAME PROGRAM [ARG...]
 ```
 
 - **Called by:** `install.sh` only, at the end, once every service is listening. Modules print in `modules/definition` order.
-- **Job:** `echo` what the user needs to open the service: its address, and any login or token, indented two spaces. `code_info` prints the address with its token; `ttyd_info` prints the login.
-- **If it's missing:** install prints `  TITLE: http://localhost:PORT`.
+- **Job:** `echo` what the user needs to open the service, indented two spaces. `ttyd_info` and `code_info` print the address and a bookmark name.
+- **If it's missing:** install prints `  TITLE: http://localhost:PORT` for each of its `proxy` ports.
 
 ## What a module can use
 
 | Name | What it is |
 |---|---|
-| `$SUPPORT` | `~/Library/Application Support/browser-everywhere`, readable only by you. Holds secrets, helper files and `logs/`. |
+| `$SUPPORT` | `~/Library/Application Support/browser-everywhere`, readable only by you. Holds the sockets, helper files and `logs/`. Every service runs with it as its working directory. |
 | `$AGENTS`  | `~/Library/LaunchAgents` |
 | `$ROOT`    | The repo folder |
 | `say MSG`  | Prints a progress line |
@@ -113,19 +126,20 @@ write_agent LABEL LOGNAME PROGRAM [ARG...]
 
 ## Rules
 
-- **Loading a module must have no side effects.** `uninstall.sh` loads every module too, possibly after the program has been removed. At the top level, only set variables, define functions and call `module`. Put anything that runs commands or touches files inside `_find` or `_setup`.
+- **Loading a module must have no side effects.** `uninstall.sh` loads every module too, possibly after the program has been removed. At the top level, only set variables, define functions and call `module`, `proxy` and `shortcut`. Put anything that runs commands or touches files inside `_find` or `_setup`.
 - **Write for macOS's `/bin/bash` 3.2**, with `set -euo pipefail` on. That means no `declare -A`, no `${var^^}`, no `mapfile`, and no unset variables.
-- **Listen on `127.0.0.1` only, and require a secret** (a password or token).
+- **Listen on a socket in `$SUPPORT`, never on a port.** Caddy is the only thing on a port, and it does the checks.
 - **Uninstalling needs nothing from the module.** `uninstall.sh` stops each `LABEL`, deletes its plist and its shortcut, and deletes all of `$SUPPORT`.
 
 ## Outline
 
 ```bash
-# Foo: what it serves, and how it's protected. Sourced by config.sh.
+# Foo: what it serves, behind Caddy. Sourced by config.sh.
 
 FOO_LABEL=local.foo
 FOO_PORT="${BROWSER_EVERYWHERE_FOO_PORT:-9000}"
-module foo "$FOO_LABEL" "$FOO_PORT" "Foo"
+module foo "$FOO_LABEL" "Foo"
+proxy "$FOO_PORT" foo.sock
 
 # Sets FOO to the foo binary.
 foo_find() {
@@ -133,17 +147,13 @@ foo_find() {
   [ -n "$FOO" ] || fail "foo not found. Install it with: brew install foo"
 }
 
-# Creates the token in $SUPPORT, then the launch agent.
+# Writes the launch agent.
 foo_setup() {
-  [ -s "$SUPPORT/foo-token" ] || (umask 077; openssl rand -hex 24 > "$SUPPORT/foo-token")
-
-  write_agent "$FOO_LABEL" foo "$FOO" \
-    --host 127.0.0.1 --port "$FOO_PORT" \
-    --token-file "$SUPPORT/foo-token"
+  write_agent "$FOO_LABEL" foo "$FOO" --socket foo.sock
 }
 
 # Optional: install's final message.
 foo_info() {
-  echo "  Foo: http://localhost:$FOO_PORT/?token=$(cat "$SUPPORT/foo-token")"
+  echo "  Foo: http://localhost:$FOO_PORT (bookmark it as \"foo\")"
 }
 ```

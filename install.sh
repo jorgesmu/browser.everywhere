@@ -43,11 +43,12 @@ check_port_availability() {
   done
   fail "Port $port is already used by: $(ps -o command= -p "$pid" | cut -c1-80) (PID $pid). Stop it (kill $pid) and run this again."
 }
-for port in "${PORTS[@]}"; do check_port_availability "$port"; done
+for port in "${PROXY_PORTS[@]}"; do check_port_availability "$port"; done
 
-# ── 2. support folder (secrets are kept across re-runs) ─────────────────────
+# ── 2. support folder (only you can open it, so only you reach the sockets) ─
 mkdir -p "$SUPPORT/logs"
 chmod 700 "$SUPPORT"
+for sock in "${PROXY_SOCKETS[@]}"; do rm -f "$SUPPORT/$sock"; done
 
 # ── 3. launch agents ────────────────────────────────────────────────────────
 xml() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<<"$1"; }
@@ -80,7 +81,7 @@ $args  </array>
 </dict>
 </plist>
 EOF
-  chmod 600 "$AGENTS/$label.plist" # may hold a password
+  chmod 600 "$AGENTS/$label.plist"
 }
 
 mkdir -p "$AGENTS"
@@ -90,16 +91,22 @@ for label in "${LABELS[@]}"; do
   launchctl bootstrap "gui/$UID_NUM" "$AGENTS/$label.plist"
 done
 
-wait_port() {
-  local port=$1 name=$2 _
+# wait_for PORT SOCKET TITLE: the service made its socket, and Caddy took its port.
+wait_for() {
+  local port=$1 sock=$2 name=$3 _
   for _ in $(seq 1 90); do
+    [ -S "$SUPPORT/$sock" ] && break
+    sleep 1
+  done
+  [ -S "$SUPPORT/$sock" ] || fail "$name didn't start (no $sock). See $SUPPORT/logs/"
+  for _ in $(seq 1 30); do
     lsof -nP -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1 && return 0
     sleep 1
   done
-  fail "$name didn't start on port $port. See $SUPPORT/logs/"
+  fail "Caddy didn't start on port $port for $name. See $SUPPORT/logs/caddy.log"
 }
 say "Starting services (the first start can take a minute)…"
-for i in "${!MODULES[@]}"; do wait_port "${PORTS[$i]}" "${TITLES[$i]}"; done
+for i in "${!PROXY_PORTS[@]}"; do wait_for "${PROXY_PORTS[$i]}" "${PROXY_SOCKETS[$i]}" "${TITLES[${PROXY_OWNERS[$i]}]}"; done
 
 # ── 4. shortcuts in ~/.local/bin ────────────────────────────────────────────
 # write_shortcut NAME URL: opens URL plus the URL-encoded folder (default: here).
@@ -134,11 +141,12 @@ for i in "${!SHORTCUTS[@]}"; do write_shortcut "${SHORTCUTS[$i]}" "${SHORTCUT_UR
 echo
 say "Installed."
 for i in "${!MODULES[@]}"; do
-  echo
   m="${MODULES[$i]}"
-  if declare -F "${m}_info" >/dev/null; then "${m}_info"
-  else echo "  ${TITLES[$i]}: http://localhost:${PORTS[$i]}"
-  fi
+  if declare -F "${m}_info" >/dev/null; then echo; "${m}_info"; continue; fi
+  for j in "${!PROXY_PORTS[@]}"; do
+    [ "${PROXY_OWNERS[$j]}" = "$i" ] || continue
+    echo; echo "  ${TITLES[$i]}: http://localhost:${PROXY_PORTS[$j]}"
+  done
 done
 echo
 echo "  Bookmark each tab with a short name, then type that name in the address bar"
