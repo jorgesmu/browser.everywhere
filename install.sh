@@ -92,12 +92,25 @@ for i in "${!MODULES[@]}"; do wait_port "${PORTS[$i]}" "${TITLES[$i]}"; done
 # write_shortcut NAME URL: opens URL plus the URL-encoded folder (default: here).
 # URL is pasted inside double quotes, so it can hold $(...) to run at call time.
 write_shortcut() {
-  cat > "$BIN/$1" <<EOF
-#!/bin/sh
-$SHORTCUT_MARK
-dir="\$(cd "\${1:-.}" 2>/dev/null && pwd)" || { echo "no such folder: \${1:-.}" >&2; exit 1; }
-open -a "Google Chrome" "$2\$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "\$dir")"
+  {
+    printf '#!/bin/sh\n%s\nurl="%s"\n' "$SHORTCUT_MARK" "$2"
+    cat <<'EOF'
+dir="$(cd "${1:-.}" 2>/dev/null && pwd)" || { echo "no such folder: ${1:-.}" >&2; exit 1; }
+
+# Percent-encode $dir byte by byte (& 255: bash reads bytes over 127 as negative).
+LC_ALL=C
+s=$dir enc=
+while [ -n "$s" ]; do
+  c=${s%"${s#?}"} s=${s#?}
+  case $c in
+    [A-Za-z0-9/._~-]) enc=$enc$c ;;
+    *) enc=$enc$(printf '%%%02X' $(( $(printf '%d' "'$c") & 255 ))) ;;
+  esac
+done
+
+open -a "Google Chrome" "$url$enc"
 EOF
+  } > "$BIN/$1"
   chmod 700 "$BIN/$1"
 }
 
