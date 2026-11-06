@@ -2,7 +2,20 @@
 # Removes everything install.sh added. Leaves ttyd and VS Code installed.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Piped from curl (no checkout next to us): fetch the repo and run from there.
+# Braces make bash read the whole block before running it, so a cut-off
+# download can't run half of it.
+{
+  ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-/nonexistent/x}")" 2>/dev/null && pwd || true)"
+  if [ ! -f "$ROOT/config.sh" ]; then
+    tmp="$(mktemp -d)"
+    trap 'rm -rf "$tmp"' EXIT
+    curl -fsSL https://github.com/jorgesmu/browser.everywhere/archive/refs/heads/main.tar.gz |
+      tar -xz --strip-components 1 -C "$tmp"
+    bash "$tmp/uninstall.sh" "$@" </dev/null
+    exit
+  fi
+}
 . "$ROOT/config.sh"
 
 for label in "${LABELS[@]}"; do

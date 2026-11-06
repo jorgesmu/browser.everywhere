@@ -14,11 +14,17 @@ Bookmark them as **terminal** and **vscode**, then type that word in the address
 - **[Homebrew](https://brew.sh)**, to install ttyd. ttyd doesn't publish macOS builds, so Homebrew is the way to get it.
 - **[VS Code](https://code.visualstudio.com)** and any browser (the `t`/`cw` shortcuts use your default one).
 
-## Install / remove
+## Install
 ```
-./install.sh      # safe to re-run; no sudo
-./uninstall.sh    # removes services, the t/cw shortcuts and the secrets folder
+curl -fsSL https://raw.githubusercontent.com/jorgesmu/browser.everywhere/main/install.sh | bash
 ```
+Or, from a clone: `./install.sh`. It's safe to re-run and needs no sudo. Piped like this, the script downloads the repo to a temporary folder, runs from there and then deletes it.
+
+## Uninstall
+```
+curl -fsSL https://raw.githubusercontent.com/jorgesmu/browser.everywhere/main/uninstall.sh | bash
+```
+Or, from a clone: `./uninstall.sh`. It removes the services, the t/cw shortcuts and the secrets folder, and leaves ttyd and VS Code installed.
 Both scripts read `config.sh` (shared paths and markers), which loads the modules listed in `modules/definition`. Each module in `modules/` (`ttyd.sh`, `code.sh`) registers its label and port and says how to set its service up; see [modules/README.md](modules/README.md) to add one.
 
 `install.sh` installs ttyd with Homebrew if needed, and prints the terminal login (your browser asks for it the first time; let it save it) and the VS Code address with its token.
