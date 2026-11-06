@@ -1,18 +1,18 @@
-# browser-everywhere: terminal and VS Code in Chrome
+# browser-everywhere: terminal and VS Code in your browser
 
-Runs your terminal ([ttyd](https://github.com/tsl0922/ttyd)) and VS Code (`code serve-web`) as login services on `localhost`, so both open as Chrome tabs.
+Runs your terminal ([ttyd](https://github.com/tsl0922/ttyd)) and VS Code (`code serve-web`) as login services on `localhost`, so both open as tabs in your default browser.
 
 | Open | Address | From a terminal |
 |---|---|---|
 | Terminal (new shell per tab) | `http://localhost:7682` | `t [folder]` |
 | VS Code | `http://localhost:8000/?tkn=…` | `cw [folder]` |
 
-Bookmark them as **terminal** and **vscode**, then type that word in Chrome's address bar and pick the bookmark.
+Bookmark them as **terminal** and **vscode**, then type that word in the address bar and pick the bookmark.
 
 ## Requirements
-- **macOS only.** It uses launchd for the services, `~/Library` for its files and `open` to launch Chrome, so it doesn't run on Linux or Windows.
+- **macOS only.** It uses launchd for the services, `~/Library` for its files and `open` to launch your default browser, so it doesn't run on Linux or Windows.
 - **[Homebrew](https://brew.sh)**, to install ttyd. ttyd doesn't publish macOS builds, so Homebrew is the way to get it.
-- **[VS Code](https://code.visualstudio.com)** and **Google Chrome**.
+- **[VS Code](https://code.visualstudio.com)** and any browser (the `t`/`cw` shortcuts use your default one).
 
 ## Install / remove
 ```
@@ -21,7 +21,7 @@ Bookmark them as **terminal** and **vscode**, then type that word in Chrome's ad
 ```
 Both scripts read `config.sh` (shared paths and markers), which loads the modules listed in `modules/definition`. Each module in `modules/` (`ttyd.sh`, `code.sh`) registers its label and port and says how to set its service up; see [modules/README.md](modules/README.md) to add one.
 
-`install.sh` installs ttyd with Homebrew if needed, and prints the terminal login (Chrome asks for it the first time; let it save it) and the VS Code address with its token.
+`install.sh` installs ttyd with Homebrew if needed, and prints the terminal login (your browser asks for it the first time; let it save it) and the VS Code address with its token.
 
 ## What it sets up
 - `~/Library/LaunchAgents/local.ttyd.plist` and `local.code.plist`: started at login, restarted if they crash.

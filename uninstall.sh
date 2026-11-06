@@ -19,4 +19,4 @@ rm -rf "$SUPPORT"
 
 echo "✻ Removed the services, the shortcuts and $SUPPORT."
 echo "  If you added ~/.local/bin to your PATH only for these shortcuts, you can remove that line."
-echo "  You can delete the \"terminal\" and \"vscode\" bookmarks in Chrome."
+echo "  You can delete bookmarks in your browser."

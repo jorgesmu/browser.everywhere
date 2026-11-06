@@ -32,7 +32,7 @@ Name module-specific variables with an uppercase `NAME_` prefix (`CODE_LABEL`, `
 shortcut COMMAND URL HELP
 ```
 
-Adds a terminal command, `~/.local/bin/COMMAND [folder]`, that opens `URL` followed by the folder's URL-encoded absolute path (the current folder by default) in Chrome.
+Adds a terminal command, `~/.local/bin/COMMAND [folder]`, that opens `URL` followed by the folder's URL-encoded absolute path (the current folder by default) in your default browser.
 
 | Argument | Meaning | Example |
 |---|---|---|

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Installs your terminal (ttyd) and VS Code (code serve-web) as login services
-# on localhost, so they open as Chrome tabs. Safe to re-run; no sudo needed.
+# on localhost, so they open as browser tabs. Safe to re-run; no sudo needed.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -108,7 +108,7 @@ while [ -n "$s" ]; do
   esac
 done
 
-open -a "Google Chrome" "$url$enc"
+open "$url$enc"
 EOF
   } > "$BIN/$1"
   chmod 700 "$BIN/$1"
@@ -121,11 +121,11 @@ for i in "${!SHORTCUTS[@]}"; do write_shortcut "${SHORTCUTS[$i]}" "${SHORTCUT_UR
 echo
 say "Installed. Terminal: http://localhost:$TTYD_PORT   VS Code: http://localhost:$CODE_PORT"
 echo
-echo "  Terminal login (Chrome asks once, let it save it):"
+echo "  Terminal login (your browser asks once, let it save it):"
 echo "    user:     $TTYD_USER"
 echo "    password: $TTYD_PASS"
 echo
-echo "  Make the shortcuts: in Chrome, bookmark each tab and name it"
+echo "  Make the shortcuts: in your browser, bookmark each tab and name it"
 echo "    \"terminal\" → http://localhost:$TTYD_PORT"
 echo "    \"vscode\"   → http://localhost:$CODE_PORT/?tkn=$(cat "$SUPPORT/code-token")"
 echo "      (keep the ?tkn= part: VS Code's sign-in cookie only lasts 7 days)"
